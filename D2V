@@ -1,0 +1,73 @@
+#coding=utf-8
+'''
+Created on 2017��3��27��
+
+@author: gb
+'''
+import os
+import numpy as np
+from gensim.models.doc2vec import Doc2Vec,LabeledSentence
+import gensim   
+#文本预处理  
+def cleanText(corpus): 
+        punctuation = """.,?？!！，。:;(){}[]的"""
+        corpus = [z.lower().replace('\n','') for z in corpus]
+        corpus = [z.replace('<br />', ' ') for z in corpus]
+
+        #treat punctuation as individual words
+        for c in punctuation:
+            corpus = [z.replace(c, ' %s '%'') for z in corpus]
+        corpus = [z.split() for z in corpus]
+        return corpus
+# result=cleanText(['我 是 一个 好 男孩','you are a good girl!'])
+
+#构造要求格式
+def labelizeReviews(reviews, label_type):
+        labelized = []
+        for i,v in enumerate(reviews):
+            label = '%s_%s'%(label_type,i)
+            labelized.append(LabeledSentence(v, [label]))               #v为[sentence] i 为0 ，1，2，3
+        return labelized
+                              
+
+##Train##
+def train(x_train,size = 200,epoch_num=10):
+    #实例DM和DBOW模型
+    model_dm = gensim.models.Doc2Vec(min_count=1, window=10, size=size, sample=1e-3, negative=5, workers=1)
+    #使用所有的数据建立词典,训练
+    model_dm.build_vocab(x_train)
+    model_dm.train(x_train)
+    
+        #进行多次重复训练，每一次都需要对训练数据重新打乱，以提高精度
+#     all_train_reviews = np.concatenate((x_train, unsup_reviews))
+#     for epoch in range(epoch_num):
+#         perm = np.random.permutation(x_train)
+#         model_dm.train(x_train[perm])
+#         model_dbow.train(all_train_reviews[perm])
+
+    return model_dm
+def getVecs(model, corpus, size):
+    vecs = [np.array(model.docvecs[z.tags[0]]).reshape((1, size)) for z in corpus]
+    return np.concatenate(vecs) 
+# def get_vectors(model_dm,size):
+#     #获取训练数据集的文档向量
+#     train_vecs_dm = getVecs(model_dm, result, size)
+# #     train_vecs = np.hstack((train_vecs_dm, train_vecs_dbow))
+#     return train_vecs_dm
+
+##主程序。
+pos_file='pos_file.txt'                                                  #需要转化向量文件
+with open(pos_file,'r') as infile:
+        content = infile.readlines()
+#         print(pos_reviews)
+cleanresult=cleanText(content)
+result=labelizeReviews(cleanresult, 'train')   
+print(result)
+model_dm=train(result)
+# vector=get_vectors(model_dm, 100)
+for z in result:
+    print(z.tags[0])
+    vector_sentence=np.array(model_dm.docvecs[z.tags[0]]).reshape((1,200))
+    print(vector_sentence)
+    
+
